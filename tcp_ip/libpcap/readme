@@ -1,0 +1,2 @@
+1.使用libpcap时要注意指定动态链接库 gcc test.c -lpcap
+2.注意运行程序可能需要root权限
