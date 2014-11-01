@@ -1,6 +1,7 @@
 #include <stdio.h>
 int main(){
-	unsigned int a:2;
-	printf("%d\n",sizeof(a)/(sizeof(int)/32));
+	int i=0;
+	for(;i<0;++i)
+		printf("%d\n",i);
 	return 0;
 }

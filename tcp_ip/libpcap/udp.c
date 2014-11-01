@@ -18,6 +18,10 @@
 
 pcap_t *handle;
 int count;
+FILE *file;
+int s_num=0;
+int r_num=0;
+
 
 int radiotap_parser(u_int32_t present){
 	int pos=0;//initialize it!!!but I don't know why
@@ -48,19 +52,35 @@ void packet_process(u_char *user,const struct pcap_pkthdr *header,const u_char *
 	char *pkt;
 	//printf("packet length:%d\n",header->caplen);
 	struct radiotap *head;
+	struct timeval ts;
 	head=(struct radiotap *)packet;
-	printf("version:%d\n",head->it_version);
-	printf("pad:%d\n",head->it_pad);
-	printf("header_length:%d\n",head->it_len); //pay attention to byte order,not need to transform
+	//printf("version:%d\n",head->it_version);
+	//printf("pad:%d\n",head->it_pad);
+	//printf("header_length:%d\n",head->it_len); //pay attention to byte order,not need to transform
 	//printf("header_length:%d\n",ntohs(head->it_len)); //pay attention to byte order
 	//printf("present_flag:%d\n",ntohl(head->it_present));
-	printf("present_flag:0x%08x\n",head->it_present);
+	//printf("present_flag:0x%08x\n",head->it_present);
 	pos=radiotap_parser(head->it_present);
 	pkt=(char *)(head+1);
 	//printf("point_postion:%d\n",pos);
 	pkt+=pos;
 	//printf("postion:0x%02lx",pkt-packet);
-	printf("RSSI:%ddm\n",*pkt);
+	//receive a ping response
+	if(header->caplen == 145)
+	{
+		printf("RSSI:%ddm\n",*pkt);
+		//pkt=(char *)(packet+26);	
+		//printf("type:%d\n",((*pkt)>>2));
+		printf("len:%d\n",header->caplen);
+		ts=header->ts;	
+		printf("timestamp:%ld.%06ld\n",(long int)ts.tv_sec,(long int)ts.tv_usec);
+		//write to file seq
+		fprintf(file,"%d:%ld.%06ld:%ddm\n",num++,(long int)ts.tv_sec,(long int)ts.tv_usec,*pkt);
+	}
+	//send a ping request
+	if(header->caplen == 158){
+		printf("send a packet\n");
+	}
 }
 
 int main(int argc,char **argv){
@@ -73,7 +93,15 @@ int main(int argc,char **argv){
 	struct in_addr netaddr;
 	struct bpf_program fp;
 	//char *filter="";
-	char *filter="wlan src 00:1e:65:d1:16:fa and wlan dst c0:cb:38:87:f9:bb";
+	//char *filter="wlan src 00:1e:65:d1:16:fa and wlan dst c0:cb:38:87:f9:bb";
+	char *filter="wlan host 00:1e:65:d1:16:fa";
+	file=fopen("./seq","w");
+	if(file==NULL)
+	{
+		printf("open file error\n");
+		return -1;
+	}
+	fprintf(file,"%s\n","#seqnum:timestamps:rssi");
 	while((c=getopt(argc,argv,"i:v"))!=-1){
 		switch(c){
 			case 'i':
