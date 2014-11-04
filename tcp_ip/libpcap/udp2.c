@@ -19,8 +19,8 @@
 pcap_t *handle;
 int count;
 FILE *file;
-int s_num=0,s_sum=0;
-int r_num=0,r_sum=0;
+int s_num=0;
+int r_num=0;
 
 
 int radiotap_parser(u_int32_t present){
@@ -69,12 +69,6 @@ void packet_process(u_char *user,const struct pcap_pkthdr *header,const u_char *
 	//receive a ping response
 	if(header->caplen == 145)
 	{
-		r_sum++;
-		if(r_num>s_num)
-		{
-			printf("receve duplicate response maybe\n");
-			return;
-		}
 		printf("RSSI:%ddm\n",*pkt);
 		//pkt=(char *)(packet+26);	
 		//printf("type:%d\n",((*pkt)>>2));
@@ -86,8 +80,6 @@ void packet_process(u_char *user,const struct pcap_pkthdr *header,const u_char *
 	}
 	//ap will not send duplicant request,but may receive duplicant response,send a ping request
 	if(header->caplen == 158){
-		s_sum++;
-		s_num++;
 		printf("send a packet\n");
 	}
 }

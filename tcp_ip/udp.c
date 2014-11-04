@@ -19,9 +19,10 @@
 pcap_t *handle;
 int count;
 FILE *file;
-int s_num=0,s_sum=0;
+int s_sum=0;
 int r_num=0,r_sum=0;
-
+struct timeval ts;
+int rssi;
 
 int radiotap_parser(u_int32_t present){
 	int pos=0;//initialize it!!!but I don't know why
@@ -42,7 +43,7 @@ struct radiotap{
 
 void ctrl_c(){
 	printf("Exiting\n");
-	fprintf(file,"s_sum:%d,r_sum:%d\n",s_sum,r_sum);
+	fprintf(file,"r_sum:%d,s_sum:%d\n",r_sum,s_sum);
 	pcap_breakloop(handle);
 	pcap_close(handle);
 	exit(0);
@@ -53,11 +54,11 @@ void packet_process(u_char *user,const struct pcap_pkthdr *header,const u_char *
 	char *pkt;
 	//printf("packet length:%d\n",header->caplen);
 	struct radiotap *head;
-	struct timeval ts;
+	//struct timeval ts;
 	head=(struct radiotap *)packet;
-	printf("version:%d\n",head->it_version);
-	printf("pad:%d\n",head->it_pad);
-	printf("header_length:%d\n",head->it_len); //pay attention to byte order,not need to transform
+	//printf("version:%d\n",head->it_version);
+	//printf("pad:%d\n",head->it_pad);
+	//printf("header_length:%d\n",head->it_len); //pay attention to byte order,not need to transform
 	//printf("header_length:%d\n",ntohs(head->it_len)); //pay attention to byte order
 	//printf("present_flag:%d\n",ntohl(head->it_present));
 	//printf("present_flag:0x%08x\n",head->it_present);
@@ -66,29 +67,26 @@ void packet_process(u_char *user,const struct pcap_pkthdr *header,const u_char *
 	//printf("point_postion:%d\n",pos);
 	pkt+=pos;
 	//printf("postion:0x%02lx",pkt-packet);
-	//receive a ping response
-	if(header->caplen == 145)
+	//145---ping request,158---ping reply
+	//receive request,the caplen may corresponding to network driver because the different radiotap header
+	if(header->caplen == 109)
 	{
 		r_sum++;
-		if(r_num>s_num)
-		{
-			printf("receve duplicate response maybe\n");
-			return;
-		}
-		printf("RSSI:%ddm\n",*pkt);
+		//printf("RSSI:%ddm\n",*pkt);
 		//pkt=(char *)(packet+26);	
 		//printf("type:%d\n",((*pkt)>>2));
-		printf("len:%d\n",header->caplen);
+		//printf("len:%d\n",header->caplen);
 		ts=header->ts;	
+		rssi=*pkt;
 		printf("timestamp:%ld.%06ld\n",(long int)ts.tv_sec,(long int)ts.tv_usec);
 		//write to file seq
-		fprintf(file,"%d:%ld.%06ld:%ddm\n",r_num++,(long int)ts.tv_sec,(long int)ts.tv_usec,*pkt);
 	}
-	//ap will not send duplicant request,but may receive duplicant response,send a ping request
-	if(header->caplen == 158){
+	//send ping request
+	if(header->caplen == 94)
+	{
 		s_sum++;
-		s_num++;
-		printf("send a packet\n");
+		//s_num++;
+		fprintf(file,"%d:%ld.%06ld:%ddm\n",r_num++,(long int)ts.tv_sec,(long int)ts.tv_usec,rssi);
 	}
 }
 
@@ -102,7 +100,7 @@ int main(int argc,char **argv){
 	struct in_addr netaddr;
 	struct bpf_program fp;
 	//char *filter="";
-	//char *filter="wlan src 00:1e:65:d1:16:fa and wlan dst c0:cb:38:87:f9:bb";
+	//char *filter="wlan src c0:cb:38:87:f9:bb and wlan dst 00:1e:65:d1:16:fa";
 	char *filter="wlan host 00:1e:65:d1:16:fa";
 	file=fopen("./seq","w");
 	if(file==NULL)
@@ -169,6 +167,7 @@ int main(int argc,char **argv){
 			return -1;
 		}
 	}
+	//printf("r_sum:%d,s_sum:%d\n",r_sum,s_sum);
 	pcap_close(handle);
 	return 0;
 }
