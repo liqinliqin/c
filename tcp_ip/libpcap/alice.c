@@ -11,6 +11,29 @@
 int m;
 float qp,qs;
 
+int quant(int h){
+	if(h>qp){
+		return 1;
+	}else if(h<qs){
+		return 0;
+	}else{
+		//invalid number
+		return -1;
+	}
+}
+
+int key_gen(int *h,int *sset,int **ka){
+	int len=sset[0];
+	int i;
+	int *key;
+	for(i=1;i<=len;i++)
+	{
+		key[i-1]=quant(h[sset[i]]);
+	}
+	*ka=key;
+	return 0;
+}
+
 int seq(int *h,int size,int **lset){  
 	//please store the size of lset somwhere 
 	int num=1;
@@ -22,7 +45,7 @@ int seq(int *h,int size,int **lset){
 	}
 	int i=0;
 	//pay attention to such boundary
-	while((i+m)<=lines){
+	while((i+m)<=size){
 		int j;
 		int q=quant(h[i]);
 		if(q==-1)
@@ -49,17 +72,6 @@ int seq(int *h,int size,int **lset){
 	mbuf[0]=num-1;
 	*lset=mbuf;	
 	return 0;
-}
-
-int quant(int h){
-	if(h>qp){
-		return 1;
-	}else if(h<qs){
-		return 0;
-	}else{
-		//invalid number
-		return -1;
-	}
 }
 
 float c_mean(int *h,int size){
@@ -97,14 +109,14 @@ int getlines(FILE *file){
 
 int main(int argc,char *argv[]){
 	FILE *file;
-	int lines;
+	int lines,i;
 	char *pos;
 	int split=':';
 	char buf[512];
 	float alpha=0.5;
 	float mean;
 	float sv;
-	int *lset;
+	int *lset,*sset,*ka;
 	//socket part variable statement
 	struct sockaddr_in serv;
 	int sd;
@@ -124,7 +136,7 @@ int main(int argc,char *argv[]){
 	int line=0;
 	if(h==NULL)
 	{
-		printf("malloc error\n");
+		printf("malloc h error\n");
 		return -1;
 	}
 	//reset the file point
@@ -158,7 +170,7 @@ int main(int argc,char *argv[]){
 	bzero(&serv,sizeof(struct sockaddr_in));	
 	serv.sin_family=AF_INET;
 	serv.sin_port=htons(PORT);
-	serv.sin_addr=inet_addr(argv[1]);
+	serv.sin_addr.s_addr=inet_addr(argv[1]);
 	if((sd=socket(AF_INET,SOCK_STREAM,0))<0)
 	{
 		printf("socket error\n");
@@ -169,6 +181,25 @@ int main(int argc,char *argv[]){
 		printf("connect error\n");
 		return -1;
 	}
-	//send lset
+	//send lset,the algorithm select a random subset of lset,we set lset directly here 
+	write(sd,lset,(lset[0]+1)*sizeof(int));
+	int len;
+	printf("wait for sset from bob\n");
+	read(sd,&len,sizeof(int));
+	printf("sset from bob comes\n");
+	printf("sset len:%d\n",len);
+	sset=malloc((len+1)*sizeof(int));
+	sset[0]=len;
+	if(sset==NULL){
+		printf("malloc sset error\n");
+		return -1;
+	}
+	read(sd,sset+1,len*sizeof(int));
+	//generate key
+	key_gen(h,sset,&ka);
+	for(i=0;i<sset[0];i++){
+		printf("%d\n",ka[i]);
+	}
+	printf("\n");
 	return 0;
 }

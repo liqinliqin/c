@@ -10,14 +10,9 @@
 #define TSFT(present) (present&0x00000001?4:0)
 
 int main(int argc,char *argv[]){
-	int i,j;
-	for(i=0;i<10;i++){
-		for(j=0;j<10;j++){
-			printf("%d\n",j);
-			if(j==3){
-				continue;
-			}
-		}
+	int error=-1;
+	if(error){
+		printf("error\n");
 	}
 	return 0;
 }
